@@ -1,110 +1,169 @@
 <template>
   <div id="main">
-    <ul class="item_block">
-      <li class="item_item page_color_yellow">
-        <span class="content_block WD_w2 MB_w4">
-          <input
-            type="text"
-            title="title"
-            class="input_text"
-            id="title"
-            placeholder="输入标题"
-            v-model="title"
-          />
-        </span>
-        <span class="content_block WD_w7 MB_w4">
-          <input
-            type="text"
-            title="document"
-            class="input_text"
-            id="document"
-            placeholder="输入内容"
-            v-model="document"
-          />
-        </span>
-        <span class="content_block WD_w1 MB_w2 tc">
-          <i
-            class="iconfont icon-xiugai util_add"
-            title="点击添加记录"
-            @click="add_todo"
-          ></i>
-        </span>
-      </li>
-      <template v-for="(lock, index) in todos">
-        <li class="item_item page_color_yellow" :data-id="lock.id">
-          <span class="content_block WD_w2 MB_w4">{{ lock.title }}</span>
-          <span class="content_block WD_w6 MB_w2">
-            <a class="link" :href="lock.document" target="_blank">
-              <span class="MB_hide">{{ lock.document }}</span>
-              <i
-                class="iconfont icon-tiaozhuan WD_hide"
-                :title="lock.document"
-              ></i>
-            </a>
-          </span>
-          <span class="content_block WD_w1 MB_w2 tc">
-            <i
-              class="iconfont icon-cuowu util_delete"
-              title="点击删除记录"
-              @click="delete_lock(lock.id)"
-            ></i>
-          </span>
-        </li>
+    <el-calendar>
+      <template slot="dateCell" slot-scope="{date, data}">
+        <p class="time">{{data.day.slice(5, 10)}}</p>
+        <el-tag
+          v-for="(todo, index) in todos"
+          v-if="todo.created.slice(0, 10) === data.day"
+          closable
+          @click="showTimeline(data.day)"
+          @close="delete_todo(todo.id)"
+          :label="todo.title"
+          size="mini"
+        >{{todo.title}}</el-tag>
+
+        <el-button
+          v-if="data.day === today()"
+          class="button-new-tag"
+          size="mini"
+          @click="showDialog"
+        >+ Tag</el-button>
       </template>
-    </ul>
+    </el-calendar>
+
+    <el-dialog title="Todo" :visible.sync="dialogTimelineVisible">
+      <el-timeline>
+        <el-timeline-item
+          v-for="(activity, index) in activities"
+          :key="index"
+          :timestamp="activity.created"
+        >
+          <el-card>
+            <h4>{{activity.title}}</h4>
+            <p>{{activity.document}}</p>
+          </el-card>
+        </el-timeline-item>
+      </el-timeline>
+    </el-dialog>
+
+    <el-dialog title="Todo" :visible.sync="dialogFormVisible">
+      <el-form :model="form">
+        <el-form-item label="标题" :label-width="formLabelWidth">
+          <el-input v-model="form.title" autocomplete="off"></el-input>
+        </el-form-item>
+        <el-form-item label="内容" :label-width="formLabelWidth">
+          <el-input v-model="form.document" type="textarea" :rows="4" autocomplete="off"></el-input>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="dialogFormVisible = false">取 消</el-button>
+        <el-button type="primary" @click="add_todo">确 定</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import {
-  searchTodo,
-  selectTodo,
-  createTodo,
-  deleteTodo,
-} from '../api/Todo.js'
+import { searchTodo, selectTodo, createTodo, deleteTodo } from '../api/Todo.js'
+import { MessageBox } from 'element-ui'
+
+Date.prototype.format = function(fmt) {
+  var o = {
+    'M+': this.getMonth() + 1, //月份
+    'd+': this.getDate(), //日
+    'h+': this.getHours(), //小时
+    'm+': this.getMinutes(), //分
+    's+': this.getSeconds(), //秒
+    'q+': Math.floor((this.getMonth() + 3) / 3), //季度
+    S: this.getMilliseconds(), //毫秒
+  }
+  if (/(y+)/.test(fmt)) {
+    fmt = fmt.replace(
+      RegExp.$1,
+      (this.getFullYear() + '').substr(4 - RegExp.$1.length)
+    )
+  }
+  for (var k in o) {
+    if (new RegExp('(' + k + ')').test(fmt)) {
+      fmt = fmt.replace(
+        RegExp.$1,
+        RegExp.$1.length == 1 ? o[k] : ('00' + o[k]).substr(('' + o[k]).length)
+      )
+    }
+  }
+  return fmt
+}
 
 export default {
   name: 'home',
   data() {
     return {
-      id: '',
-      title: null,
-      document: null,
       todos: [],
+      activities: [],
+      form: {
+        title: '',
+        document: '',
+      },
+      dialogFormVisible: false,
+      dialogTimelineVisible: false,
+      formLabelWidth: '120px',
     }
   },
   computed: {},
   components: {},
   created() {},
   async mounted() {
-    let result = await searchTodo({ use_pager: 0, order_by: "-created"})
+    let result = await searchTodo({ use_pager: 0, order_by: '-created' })
     this.todos = result.data
   },
   methods: {
-    copy(todoId, value) {
-      let ele = document.getElementById(todoId)
-      ele.value = value
-      ele.focus()
-      ele.select()
-      document.execCommand('Copy')
+    today() {
+      let td = new Date()
+      return td.format('yyyy-MM-dd')
     },
     async add_todo() {
-      if (this.title === '' || this.title === null) {
+      if (this.form.title === '' || this.form.doucment === null) {
         return false
       }
       let data = {
-        title: this.title,
-        document: this.document,
+        title: this.form.title,
+        document: this.form.document,
       }
       const todoId = await createTodo(data)
       const result = await selectTodo(todoId)
       this.todos.splice(0, 0, result)
-      this.title = ''
-      this.document = ''
+      this.dialogFormVisible = false
     },
-    async delete_lock(lockId) {
-      const result = await deleteTodo(lockId)
-      this.todos.splice(this.todos.findIndex((item) => item.id === lockId), 1)
+    async delete_todo(todoId) {
+      this.$confirm('此操作将永久删除该信息, 是否继续?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      })
+        .then(async () => {
+          const result = await deleteTodo(todoId)
+          this.todos.splice(
+            this.todos.findIndex((item) => item.id === todoId),
+            1
+          )
+          this.$message({
+            type: 'success',
+            message: '删除成功!',
+          })
+        })
+        .catch(() => {
+          this.$message({
+            type: 'info',
+            message: '已取消删除',
+          })
+        })
+    },
+    showTimeline(day) {
+      this.activities = []
+      for (let todo of this.todos) {
+        if (todo.created.slice(0, 10) == day) {
+          this.activities.push(todo)
+        }
+      }
+      this.dialogTimelineVisible = true
+    },
+    showDialog() {
+      this.form = {
+        title: '',
+        document: '',
+      }
+      this.dialogFormVisible = true
     },
   },
 }
@@ -120,8 +179,13 @@ export default {
 .content_block {
   text-align: left;
 }
-.for_copy {
-  position: absolute;
-  left: -9999px;
+.el-calendar-table {
+  .el-calendar-day {
+    padding: 4px;
+  }
+}
+
+.time {
+  font-size: 12px;
 }
 </style>
