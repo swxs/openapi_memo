@@ -1,8 +1,8 @@
 <template>
   <div id="main">
     <el-calendar>
-      <template slot="dateCell" slot-scope="{date, data}">
-        <p class="time">{{data.day.slice(5, 10)}}</p>
+      <template slot="dateCell" slot-scope="{ date, data }">
+        <p class="time">{{ data.day.slice(5, 10) }}</p>
         <el-tag
           v-for="(todo, index) in todos"
           v-if="todo.created.slice(0, 10) === data.day"
@@ -11,14 +11,16 @@
           @close="delete_todo(todo.id)"
           :label="todo.title"
           size="mini"
-        >{{todo.title}}</el-tag>
+          >{{ todo.title }}</el-tag
+        >
 
         <el-button
           v-if="data.day === today()"
           class="button-new-tag"
           size="mini"
           @click="showDialog"
-        >+ Tag</el-button>
+          >+ Tag</el-button
+        >
       </template>
     </el-calendar>
 
@@ -30,8 +32,8 @@
           :timestamp="activity.created"
         >
           <el-card>
-            <h4>{{activity.title}}</h4>
-            <p>{{activity.document}}</p>
+            <h4>{{ activity.title }}</h4>
+            <p>{{ activity.document }}</p>
           </el-card>
         </el-timeline-item>
       </el-timeline>
@@ -43,7 +45,12 @@
           <el-input v-model="form.title" autocomplete="off"></el-input>
         </el-form-item>
         <el-form-item label="内容" :label-width="formLabelWidth">
-          <el-input v-model="form.document" type="textarea" :rows="4" autocomplete="off"></el-input>
+          <el-input
+            v-model="form.document"
+            type="textarea"
+            :rows="4"
+            autocomplete="off"
+          ></el-input>
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
@@ -102,11 +109,7 @@ export default {
   },
   computed: {},
   components: {},
-  created() {},
-  async mounted() {
-    let result = await searchTodo({ use_pager: 0, order_by: '-created' })
-    this.todos = result.data
-  },
+
   methods: {
     today() {
       let td = new Date()
@@ -120,9 +123,9 @@ export default {
         title: this.form.title,
         document: this.form.document,
       }
-      const todoId = await createTodo(data)
-      const result = await selectTodo(todoId)
-      this.todos.splice(0, 0, result)
+      const todo = await createTodo(data)
+      const result = await selectTodo(todo.data.id)
+      this.todos.splice(0, 0, result.data.data)
       this.dialogFormVisible = false
     },
     async delete_todo(todoId) {
@@ -165,6 +168,11 @@ export default {
       }
       this.dialogFormVisible = true
     },
+  },
+  created() {},
+  async mounted() {
+    let result = await searchTodo({ use_pager: 0, order_by: '-created' })
+    this.todos = result.data.data
   },
 }
 </script>
