@@ -1,6 +1,6 @@
 <template>
   <div id="main">
-    <el-calendar>
+    <el-calendar v-show="status === 'calendar'">
       <template slot="dateCell" slot-scope="{ date, data }">
         <p class="time">{{ data.day.slice(5, 10) }}</p>
         <el-tag
@@ -24,20 +24,30 @@
       </template>
     </el-calendar>
 
-    <el-dialog title="Todo" :visible.sync="dialogTimelineVisible">
-      <el-timeline>
-        <el-timeline-item
-          v-for="(activity, index) in activities"
-          :key="index"
-          :timestamp="activity.created"
-        >
-          <el-card>
-            <h4>{{ activity.title }}</h4>
-            <p>{{ activity.document }}</p>
-          </el-card>
-        </el-timeline-item>
-      </el-timeline>
-    </el-dialog>
+    <el-timeline v-show="status === 'timeline'">
+      <el-timeline-item
+        v-for="(todo, index) in todos"
+        :key="index"
+        :timestamp="todo.created"
+      >
+        <el-card class="box-card">
+          <div slot="header" class="clearfix">
+            <span>{{ todo.title }}</span>
+            <el-button
+              style="float: right; padding: 3px 0"
+              type="text"
+              @click="showDialog"
+              >+ Tag</el-button
+            >
+          </div>
+          {{ todo.document }}
+        </el-card>
+      </el-timeline-item>
+    </el-timeline>
+
+    <el-button id="changer" @click="changeStatus">
+      C
+    </el-button>
 
     <el-dialog title="Todo" :visible.sync="dialogFormVisible">
       <el-form :model="form">
@@ -96,6 +106,8 @@ export default {
   name: 'home',
   data() {
     return {
+      status: 'timeline',
+      // status: 'calendar',
       todos: [],
       activities: [],
       form: {
@@ -168,6 +180,13 @@ export default {
       }
       this.dialogFormVisible = true
     },
+    changeStatus() {
+      if (this.status === 'calendar') {
+        this.status = 'timeline'
+      } else if (this.status === 'timeline') {
+        this.status = 'calendar'
+      }
+    },
   },
   created() {},
   async mounted() {
@@ -195,5 +214,15 @@ export default {
 
 .time {
   font-size: 12px;
+}
+
+#changer {
+  position: fixed; //关键
+  height: 40px;
+  width: 40px;
+  bottom: 50px;
+  right: 50px;
+  background: #b4d145;
+  color: #fff;
 }
 </style>
