@@ -1,22 +1,23 @@
 <template>
   <div id="main">
-    <el-calendar v-show="status === 'calendar'">
+    <el-calendar v-show="status === 'calendar'" id="calendar">
       <template slot="dateCell" slot-scope="{ date, data }">
         <p class="time">{{ data.day.slice(5, 10) }}</p>
         <el-tag
           v-for="(todo, index) in todos"
           v-if="todo.created.slice(0, 10) === data.day"
-          closable
-          @click="showTimeline(data.day)"
-          @close="delete_todo(todo.id)"
           :label="todo.title"
+          @click="showDialog(todo)"
+          @close="delete_todo(todo.id)"
           size="mini"
-          >{{ todo.title }}</el-tag
+          closable
         >
+          {{ todo.title }}
+        </el-tag>
 
         <el-button
           v-if="data.day === today()"
-          class="button-new-tag"
+          class="button-new-tag button-add"
           size="mini"
           @click="showDialog"
           >+ Tag</el-button
@@ -33,47 +34,57 @@
         <el-card class="box-card">
           <div slot="header" class="clearfix">
             <span>{{ todo.title }}</span>
+
             <el-button
-              style="float: right; padding: 3px 0"
+              style="float: right; padding: 3px 0;"
               type="text"
-              @click="showDialog"
-              >+ Tag</el-button
+              @click="delete_todo(todo.id)"
             >
+              删除
+            </el-button>
+            <el-button
+              style="float: right; padding: 3px 0; margin-right: 20px;"
+              type="text"
+              @click="showDialog(todo)"
+            >
+              修改
+            </el-button>
           </div>
-          {{ todo.document }}
+          <div v-html="todo.document"></div>
         </el-card>
       </el-timeline-item>
     </el-timeline>
 
-    <el-button id="changer" @click="changeStatus">
-      C
+    <el-button id="changer" @click="changeStatus" class="iconfont icon-xiugai">
     </el-button>
 
-    <el-dialog title="Todo" :visible.sync="dialogFormVisible">
+    <el-dialog title="Todo" :visible.sync="dialogFormVisible" id="dialog">
       <el-form :model="form">
-        <el-form-item label="标题" :label-width="formLabelWidth">
+        <el-form-item label="标题">
           <el-input v-model="form.title" autocomplete="off"></el-input>
         </el-form-item>
-        <el-form-item label="内容" :label-width="formLabelWidth">
-          <el-input
-            v-model="form.document"
-            type="textarea"
-            :rows="4"
-            autocomplete="off"
-          ></el-input>
+        <el-form-item label="内容">
+          <editor-bar v-model="form.document" :isClear="isClear"></editor-bar>
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
         <el-button @click="dialogFormVisible = false">取 消</el-button>
-        <el-button type="primary" @click="add_todo">确 定</el-button>
+        <el-button type="primary" @click="add_or_update_todo">确 定</el-button>
       </div>
     </el-dialog>
   </div>
 </template>
 
 <script>
-import { searchTodo, selectTodo, createTodo, deleteTodo } from '../api/Todo.js'
 import { MessageBox } from 'element-ui'
+import EditorBar from './components/EditorBar'
+import {
+  searchTodo,
+  selectTodo,
+  createTodo,
+  updateTodo,
+  deleteTodo,
+} from '../api/Todo.js'
 
 Date.prototype.format = function(fmt) {
   var o = {
@@ -107,38 +118,50 @@ export default {
   data() {
     return {
       status: 'timeline',
-      // status: 'calendar',
       todos: [],
       activities: [],
       form: {
+        id: null,
         title: '',
         document: '',
       },
+      isClear: true,
       dialogFormVisible: false,
       dialogTimelineVisible: false,
-      formLabelWidth: '120px',
     }
   },
   computed: {},
-  components: {},
-
+  components: {
+    'editor-bar': EditorBar,
+  },
   methods: {
     today() {
       let td = new Date()
       return td.format('yyyy-MM-dd')
     },
-    async add_todo() {
-      if (this.form.title === '' || this.form.doucment === null) {
+    async add_or_update_todo() {
+      if (this.form.title === '' || this.form.doucment === '') {
         return false
       }
       let data = {
         title: this.form.title,
         document: this.form.document,
       }
-      const todo = await createTodo(data)
-      const result = await selectTodo(todo.data.id)
-      this.todos.splice(0, 0, result.data.data)
-      this.dialogFormVisible = false
+      if (this.form.id === null) {
+        const todo = await createTodo(data)
+        const result = await selectTodo(todo.data.id)
+        this.todos.splice(0, 0, result.data.data)
+        this.dialogFormVisible = false
+      } else {
+        const todo = await updateTodo(this.form.id, data)
+        const result = await selectTodo(todo.data.id)
+        this.todos.splice(
+          this.todos.findIndex((_todo) => _todo.id === result.data.data.id),
+          1,
+          result.data.data
+        )
+        this.dialogFormVisible = false
+      }
     },
     async delete_todo(todoId) {
       this.$confirm('此操作将永久删除该信息, 是否继续?', '提示', {
@@ -164,19 +187,19 @@ export default {
           })
         })
     },
-    showTimeline(day) {
-      this.activities = []
-      for (let todo of this.todos) {
-        if (todo.created.slice(0, 10) == day) {
-          this.activities.push(todo)
+    showDialog(todo) {
+      if (todo === null) {
+        this.form = {
+          id: null,
+          title: '',
+          document: '',
         }
-      }
-      this.dialogTimelineVisible = true
-    },
-    showDialog() {
-      this.form = {
-        title: '',
-        document: '',
+      } else {
+        this.form = {
+          id: todo.id,
+          title: todo.title,
+          document: todo.document,
+        }
       }
       this.dialogFormVisible = true
     },
@@ -197,32 +220,83 @@ export default {
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
-<style lang="less" scoped>
+<style lang="less">
+#main {
+  #calendar {
+    .time {
+      font-size: 12px;
+    }
+
+    .el-calendar-table {
+      .el-calendar-day {
+        padding: 4px;
+      }
+    }
+
+    .el-tag {
+      margin-right: 5px;
+    }
+
+    .button-add {
+      padding: 0 5px;
+      height: 20px;
+      line-height: 19px;
+    }
+  }
+
+  #changer {
+    position: fixed; //关键
+    height: 30px;
+    width: 30px;
+    bottom: 50px;
+    left: 0;
+    right: auto;
+    background: #b4d145;
+    color: #fff;
+    padding: 0;
+    font-size: 20px;
+  }
+
+  #dialog {
+    .el-form-item__label {
+      text-align: left;
+      width: 100%;
+    }
+    .el-form-item__content {
+      margin-left: 0;
+    }
+    .el-dialog {
+      margin: 0;
+      width: 100%;
+    }
+  }
+}
+
 @media (min-width: 500px) {
   #main {
     padding: 40px 100px;
-  }
-}
-.content_block {
-  text-align: left;
-}
-.el-calendar-table {
-  .el-calendar-day {
-    padding: 4px;
-  }
-}
 
-.time {
-  font-size: 12px;
-}
+    #dialog {
+      .el-form-item__label {
+        text-align: right;
+        width: 120px;
+      }
+      .el-form-item__content {
+        margin-left: 120px;
+      }
+      .el-dialog {
+        margin: 0 auto 50px;
+        width: 70%;
+      }
+    }
 
-#changer {
-  position: fixed; //关键
-  height: 40px;
-  width: 40px;
-  bottom: 50px;
-  right: 50px;
-  background: #b4d145;
-  color: #fff;
+    #changer {
+      height: 40px;
+      width: 40px;
+      left: auto;
+      right: 50px;
+      font-size: 38px;
+    }
+  }
 }
 </style>
