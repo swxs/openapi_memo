@@ -19,7 +19,7 @@
           v-if="data.day === today()"
           class="button-new-tag button-add"
           size="mini"
-          @click="showDialog"
+          @click="showDialog(null)"
           >+ Tag</el-button
         >
       </template>
