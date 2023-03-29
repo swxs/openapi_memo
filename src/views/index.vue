@@ -85,6 +85,7 @@ import {
   updateTodo,
   deleteTodo,
 } from '../api/Todo.js'
+import { getTokenInfo } from '../utils/auth'
 
 Date.prototype.format = function(fmt) {
   var o = {
@@ -140,25 +141,25 @@ export default {
       return td.format('yyyy-MM-dd')
     },
     async add_or_update_todo() {
+      let token_info = getTokenInfo()
       if (this.form.title === '' || this.form.doucment === '') {
         return false
       }
       let data = {
+        user_id: token_info.user_id,
         title: this.form.title,
         document: this.form.document,
       }
       if (this.form.id === null) {
         const todo = await createTodo(data)
-        const result = await selectTodo(todo.data.id)
-        this.todos.splice(0, 0, result.data.data)
+        this.todos.splice(0, 0, todo.data.data)
         this.dialogFormVisible = false
       } else {
         const todo = await updateTodo(this.form.id, data)
-        const result = await selectTodo(todo.data.id)
         this.todos.splice(
-          this.todos.findIndex((_todo) => _todo.id === result.data.data.id),
+          this.todos.findIndex((_todo) => _todo.id === todo.data.data.id),
           1,
-          result.data.data
+          todo.data.data
         )
         this.dialogFormVisible = false
       }
