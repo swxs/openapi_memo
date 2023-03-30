@@ -7,7 +7,7 @@ export async function searchTodo(data){
 }
 
 export async function selectTodo(id){
-  return Vue.axios.get(`${TodoUrl}${id}/`)
+  return Vue.axios.get(`${TodoUrl}${id}`)
 }
 
 export async function createTodo(data){
@@ -15,13 +15,13 @@ export async function createTodo(data){
 }
 
 export async function copyTodo(id, data){
-  return Vue.axios.post(`${TodoUrl}${id}/`, data)
+  return Vue.axios.post(`${TodoUrl}${id}`, data)
 }
 
 export async function updateTodo(id, data){
-  return Vue.axios.put(`${TodoUrl}${id}/`, data)
+  return Vue.axios.put(`${TodoUrl}${id}`, data)
 }
 
 export async function deleteTodo(id){
-  return Vue.axios.delete(`${TodoUrl}${id}/`)
+  return Vue.axios.delete(`${TodoUrl}${id}`)
 }
