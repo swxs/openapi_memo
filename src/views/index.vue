@@ -214,7 +214,7 @@ export default {
   },
   created() {},
   async mounted() {
-    let result = await searchTodo({ use_pager: 0, order_by: '-created' })
+    let result = await searchTodo({ use_pager: 0, order_by: ['-created'] })
     this.todos = result.data.data
   },
 }
